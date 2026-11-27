@@ -3,7 +3,12 @@
   "private": true,
   "version": "1.0.0",
   "type": "module",
-  "scripts": { "dev": "vite", "build": "vite build", "typecheck": "vue-tsc --noEmit" },
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit",
+    "test": "vitest run"
+  },
   "dependencies": {
     "@fontsource/space-mono": "^5.2.8",
     "lucide-vue-next": "^0.511.0",
@@ -13,8 +18,11 @@
   "devDependencies": {
     "@vitejs/plugin-vue": "^5.2.4",
     "@vue/compiler-sfc": "^3.5.13",
+    "@vue/test-utils": "^2.6.0",
+    "jsdom": "^31.0.1",
     "typescript": "~5.8.3",
     "vite": "^6.4.0",
+    "vitest": "^2.1.9",
     "vue-tsc": "^2.2.10"
   }
 }

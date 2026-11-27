@@ -1,10 +1,30 @@
-import type { Grid } from '../../../shared/board';
-import type { Wave } from '../../../shared/turn';
-import { matchingGroups, settle, type PieceSource } from '../../board';
-import { propagate, specialFor } from '../../specials';
+import { FULL_SHAPE, type Color, type Grid, type Shape } from '../../../shared/board';
+import type { ClearTrace, Wave } from '../../../shared/turn';
+import { matchingGroups } from '../../board/lib/matching';
+import { settle, type BoardFeed } from '../../board/lib/gravity';
+import { propagate } from '../../specials/lib/propagate';
+import { specialFor } from '../../specials/model/catalog';
 
-export function resolveWave(grid: Grid, depth: number, source: PieceSource, preferred: number[], comboCells?: number[]): Wave | null {
-  const groups = matchingGroups(grid, preferred);
+/** 记录被清除晶石的来源；仅当晶石带 origin 时写入。 */
+function tracesOf(grid: Grid, hits: number[]): ClearTrace[] {
+  const out: ClearTrace[] = [];
+  for (const index of hits) {
+    const piece = grid.pieces[index];
+    if (!piece || piece.origin === undefined || !piece.born) continue;
+    out.push({ id: piece.id, origin: piece.origin, born: piece.born, index, color: piece.color });
+  }
+  return out;
+}
+
+export function resolveWave(
+  grid: Grid,
+  depth: number,
+  feed: BoardFeed,
+  preferred: number[],
+  comboCells?: number[],
+  shape: Shape = feed.shape ?? FULL_SHAPE,
+): Wave | null {
+  const groups = matchingGroups(grid, preferred, shape);
   if (!groups.length && !comboCells) return null;
   const seeds = new Set(groups.flatMap(group => group.cells));
   comboCells?.forEach(index => seeds.add(index));
@@ -16,11 +36,12 @@ export function resolveWave(grid: Grid, depth: number, source: PieceSource, pref
   }
 
   const protectedCells = new Set(created.map(item => item.index));
-  const { hits, triggered } = propagate(grid, seeds, comboCells ? preferred : [], protectedCells);
+  const { hits, triggered } = propagate(grid, seeds, comboCells ? preferred : [], protectedCells, shape);
   const pieces = grid.pieces.slice();
   const armor = grid.armor.slice();
   const armorHits: number[] = [];
-  const colors: Wave['colors'] = [];
+  const colors: Color[] = [];
+  const provenance = tracesOf(grid, hits);
   for (const index of hits) {
     const piece = pieces[index];
     if (piece) colors.push(piece.color);
@@ -39,5 +60,9 @@ export function resolveWave(grid: Grid, depth: number, source: PieceSource, pref
     }
   }
 
-  return { depth, cleared: hits, colors, armorHits, created, triggered, board: settle({ pieces, armor }, source) };
+  return {
+    depth, cleared: hits, colors, armorHits, created, triggered,
+    board: settle({ pieces, armor }, feed),
+    provenance,
+  };
 }
